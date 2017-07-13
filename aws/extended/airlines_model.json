@@ -1,0 +1,14 @@
+{
+  "version": "1.0",
+  "targetFieldName": "airline_sentiment",
+  "dataFormat": "CSV",
+  "dataFileContainsHeader": true,
+  "attributes": [
+    { "attributeName": "text_clean", "attributeType": "TEXT" },
+    { "attributeName": "exclamation", "attributeType": "BINARY" },
+    { "attributeName": "emojis", "attributeType": "BINARY" },
+    { "attributeName": "links", "attributeType": "BINARY" },
+    { "attributeName": "hashtags", "attributeType": "BINARY" },
+    { "attributeName": "airline_sentiment", "attributeType": "CATEGORICAL" }
+  ]
+}

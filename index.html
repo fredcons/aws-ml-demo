@@ -1,0 +1,536 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<title>Amazon Machine Learning</title>
+
+		<link rel="stylesheet" href="css/reveal.css">
+		<link rel="stylesheet" href="css/theme/black.css">
+
+		<!-- Theme used for syntax highlighting of code -->
+		<link rel="stylesheet" href="lib/css/zenburn.css">
+
+		<!-- Printing and PDF exports -->
+		<script>
+			var link = document.createElement( 'link' );
+			link.rel = 'stylesheet';
+			link.type = 'text/css';
+			link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+			document.getElementsByTagName( 'head' )[0].appendChild( link );
+		</script>
+	</head>
+	<body>
+		<div class="reveal">
+			<div class="slides">
+				<section data-background="white">
+                                  <h2>Introduction à Amazon Machine Learning</h2>
+                                </section>
+
+                                <section data-background="white">
+                                  <h4>Les API de Machine Learning</h4>
+                                  <ul>
+                                    <li>IBM Watson</li>
+                                    <li>Amazon Machine Learning</li>
+                                  </ul>
+                                </section>
+
+                                <section data-background="white">
+                                  <h4>Les grandes classes de problèmes</h4>
+                                  <ul>
+                                    <li>Supervisés
+                                      <ul>
+                                        <li>Régression</li>
+                                        <li>Classification</li>
+                                      </ul>
+                                    <li>Non supervisés
+                                        <ul>
+                                           <li>Clustering</li>
+                                        </ul>
+                                    </li>
+                                  </ul>
+                                </section>
+
+                                <section data-background="white">
+                                  <h4>Disclaimer</h4>
+                                  <p>Pas de Deep Learning ici !</p>
+                                </section>
+
+                                <section data-background="white">
+                                  <h4>Notre use case</h4>
+                                  <ul>
+                                    <li>Classification multi-classes</li>
+                                    <li>Exemples IRL
+                                        <ul>
+                                           <li>Spam / not spam</li>
+                                           <li>Intention dans un dialogue</li>
+                                           <li>Type d'objet</li>
+                                        </ul>
+                                    </li>
+                                  </ul>
+                                </section>
+
+                                <section data-background="white">
+                                  <h4>L'algorithme</h4>
+                                  <ul>
+                                    <li>"multinomial logistic regression"</li>
+                                    <li>But: assigner une probabilité à chacune des n classes</li>
+                                </section>
+
+                                <section data-background="white">
+                                  <h4>Cycle de développement</h4>
+                                  <ul>
+                                    <li>Nettoyer son dataset</li>
+                                    <li>Créer et évaluer un modèle</li>
+                                    <li>Recommencer...</li>
+                                    <li>Prédire</li>
+                                  </ul>
+                                </section>
+
+                                <section data-background="white">
+                                  <h2>Préparation des données</h2>
+                                </section>
+
+                                <section data-background="white">
+                                  <h4>Notre dataset</h4>
+                                  <ul>
+                                    <li>Tweets destinés à des compagnies aériennes</li>
+                                    <li>Texte du tweet => sentiment</li>
+                                    <li>3 valeurs de sentiment : positive / negative / neutral</li>
+                                  </ul>
+                                </section>
+
+                                <section data-background="white">
+                                  <h4>Exemple d'enregistrement</h4>
+                                  <ul>
+                                      <li>Version brute
+                                  <pre>@VirginAmerica What happened 2 ur vegan food options?! At least say on ur
+site so i know I won't be able 2 eat anything for next 6 hrs #fail</pre>
+                                      </li>
+                                      <li>Version nettoyée (casual tokenizer NLTK, ponctuation)
+                                  <pre>what happened 2 ur vegan food options   at least say on ur
+site so i know i wont be able 2 eat anything for next 6 hrs fail</pre>
+                                      </li>
+                                  </ul>
+                                </section>
+
+                                <section data-background="white">
+                                  <h4>Création d'un schéma</h4>
+                                  <pre><code data-trim data-noescape>cat aws/simple/airlines_model.json
+{
+  "version": "1.0",
+  "targetFieldName": "airline_sentiment",
+  "dataFormat": "CSV",
+  "dataFileContainsHeader": true,
+  "attributes": [
+    { "attributeName": "text_clean", "attributeType": "TEXT" },
+    { "attributeName": "airline_sentiment", "attributeType": "CATEGORICAL" }
+  ]
+}
+                                  </code></pre>
+                                </section>
+
+
+                                <section data-background="white">
+                                  <h4>Upload sur S3</h4>
+                                  <pre><code data-trim data-noescape>
+aws s3 sync aws s3://bucket-ekino-aws-ml/airlines
+aws s3 cp data/tweets_airlines_clean.csv \
+    s3://bucket-ekino-aws-ml/airlines/simple/
+                                  </code></pre>
+                                </section>
+
+                                <section data-background="white">
+                                  <h4>Création d'une datasource d'entrainement</h4>
+                                  <pre><code data-trim data-noescape>aws machinelearning create-data-source-from-s3 \
+--data-source-id airlines_simple_train \
+--data-source-name airlines_simple_train \
+--data-spec file://aws/simple/airlines_spec_train.json \
+--compute-statistics
+                                  </code></pre>
+                                  <pre><code data-trim data-noescape>
+cat aws/simple/airlines_spec_train.json
+{
+  "DataLocationS3":
+    "s3://bucket-ekino-aws-ml/airlines/simple/tweets_airlines_clean.csv",
+  "DataSchemaLocationS3":
+    "s3://bucket-ekino-aws-ml/airlines/simple/airlines_model.json",
+  "DataRearrangement" :
+    "{\"splitting\":{\"percentBegin\":70, \"percentEnd\":100, \"strategy\":\"random\", \"complement\":\"true\", \"strategyParams\": {\"randomSeed\":\"foobar\"}}}"
+}
+                                  </code></pre>
+                                </section>
+
+                                <section data-background="white">
+                                  <img src="screenshots/datasource_simple.png" />
+                                </section>
+
+                                <section data-background="white">
+                                  <img src="screenshots/datasource_target.png" />
+                                </section>
+
+                                <section data-background="white">
+                                  <img src="screenshots/datasource_text.png" />
+                                </section>
+
+                                <section data-background="white">
+                                  <h4>Création d'une datasource d'évaluation</h4>
+                                  <pre><code data-trim data-noescape>
+aws machinelearning create-data-source-from-s3 \
+                  --data-source-id airlines_simple_eval \
+                  --data-source-name airlines_simple_eval \
+                  --data-spec file://aws/simple/airlines_spec_eval.json \
+                  --compute-statistics
+                                  </code></pre>
+                                  <pre><code data-trim data-noescape>cat aws/simple/airlines_spec_eval.json
+{
+  "DataLocationS3":
+    "s3://bucket-ekino-aws-ml/airlines/simple/tweets_airlines_clean.csv",
+  "DataSchemaLocationS3":
+    "s3://bucket-ekino-aws-ml/airlines/simple/airlines_model.json",
+  "DataRearrangement" :
+    "{\"splitting\":{\"percentBegin\":70, \"percentEnd\":100, \"strategy\":\"random\", \"strategyParams\": {\"randomSeed\":\"foobar\"}}}"
+}
+                                  </code></pre>
+                                </section>
+
+
+                                <section data-background="white">
+                                  <h4>Policy IAM</h4>
+                                  <pre><code data-trim data-noescape>"Statement":[
+  {
+   "Effect":"Allow",
+   "Principal":{ "Service":"machinelearning.amazonaws.com" },
+   "Action":"s3:GetObject",
+   "Resource":"arn:aws:s3:::bucket-ekino-aws-ml/*"
+  },
+  {
+   "Effect":"Allow",
+   "Principal":{ "Service":"machinelearning.amazonaws.com" },
+   "Action":"s3:ListBucket",
+   "Resource":"arn:aws:s3:::bucket-ekino-aws-ml"
+  }
+ ]</code></pre>
+                                </section>
+
+                                <section data-background="white">
+                                  <h2>Création et évaluation d'un modèle</h2>
+                                </section>
+
+                                <section data-background="white">
+                                  <pre><code data-trim data-noescape>aws machinelearning create-ml-model \
+   --ml-model-id airlines_simple \
+   --ml-model-name airlines_simple \
+   --ml-model-type MULTICLASS \
+   --training-data-source-id airlines_simple_train
+                                  </code></pre>
+                                </section>
+
+                                <section data-background="white">
+                                  <img src="screenshots/model_log.png" />
+                                </section>
+
+                                <section data-background="white">
+                                  <h4>Création de l'évaluation du modèle</h4>
+                                  <pre><code data-trim data-noescape>aws machinelearning create-evaluation \
+  --evaluation-name airlines_simple_eval \
+  --evaluation-id airlines_simple_eval \
+  --ml-model-id airlines_simple \
+  --evaluation-data-source-id airlines_simple_eval
+                                  </code></pre>
+                                </section>
+
+                                <section data-background="white">
+                                  <h4>Modes d'évaluation d'un modèle</h4>
+                                  <ul>
+                                    <li>Précision : minimiser les faux positifs<br/><br/>
+                                        \[\begin{aligned}
+                                        P &amp; = \frac {TP} {TP + FP}
+                                        \end{aligned} \]
+                                        <br/>
+                                    </li>
+                                    <li>Recall : minimiser les faux négatifs<br/><br/>
+                                        \[\begin{aligned}
+                                        R &amp; = \frac {TP} {TP + FN}
+                                        \end{aligned} \]
+                                    </li>
+                                  </ul>
+
+
+                                </section>
+
+                                <section data-background="white">
+                                  <h4>Score F1</h4>
+                                  <ul>
+                                    <li>Permet d'évaluer l'équilibre entre précision et recall</li>
+                                    <li>"Moyenne harmonique"</li>
+                                  </ul>
+                                  \[\begin{aligned}
+                                  F1 &amp; = 2 \cdot \frac {P \cdot R} {P + R}
+                                  \end{aligned} \]
+                                </section>
+
+                                <section data-background="white">
+                                  <h4>Matrice de confusion et score F1</h4>
+                                  <img src="screenshots/matrix_simple2.png" />
+                                </section>
+
+                                <section data-background="white">
+                                  <h4>Itération 2 : paramètres du modèle</h4>
+                                  <ul>
+                                    <li>Temps passé sur l'apprentissage <pre>sgd.maxPasses=10</pre></li>
+                                    <li>Contraintes sur les "poids" du modèle (aka "Régularisation") <pre>sgd.l1RegularizationAmount / sgd.l2RegularizationAmount</pre></li>
+                                    <li>Randomization des données <pre>sgd.shuffleType=10</pre></li>
+                                  </ul>
+                                </section>
+
+                                <section data-background="white">
+                                  <pre><code data-trim data-noescape>aws machinelearning create-ml-model \
+   --ml-model-id airlines_simple_shuffle \
+   --ml-model-name airlines_simple_shuffle \
+   --ml-model-type MULTICLASS \
+   --training-data-source-id airlines_simple_train \
+   --parameters sgd.shuffleType=auto
+                                  </code></pre>
+                                </section>
+
+                                <section data-background="white">
+                                  <h4>Résultats</h4>
+                                  <img src="screenshots/matrix_shuffle.png" />
+                                </section>
+
+                                <section data-background="white">
+                                  <h4>Itération 3 : "recipe"</h4>
+                                </section>
+
+                                <section data-background="white">
+                                  <h4>Création</h4>
+                                  <pre><code data-trim data-noescape>aws machinelearning create-ml-model \
+   --ml-model-id airlines_simple_recipe \
+   --ml-model-name airlines_simple_recipe \
+   --ml-model-type MULTICLASS \
+   --training-data-source-id airlines_simple_train \
+   --recipe-uri s3://bucket-ekino-aws-ml/airlines/recipes/recipe.json \
+   --parameters sgd.shuffleType=auto
+                                  </code></pre>
+                                </section>
+
+                                <section data-background="white">
+                                  <h4>Recipe</h4>
+                                  <pre><code data-trim data-noescape>cat aws/recipes/recipe.json
+{
+  "outputs": [
+    "ALL_BINARY",
+    "ALL_CATEGORICAL",
+    "ALL_TEXT",
+    "ngram(lowercase(no_punct(text_clean)),2)"
+  ]
+}</code></pre>
+                                </section>
+
+                                <section data-background="white">
+                                  <h4>Autres transformations</h4>
+                                  <ul>
+                                     <li>Quantile binning</li>
+                                     <li>Nornalization</li>
+                                     <li>Cartesian product</li>
+                                 </ul>
+                                </section>
+
+                                <section data-background="white">
+                                  <h4>Résultats</h4>
+                                  <img src="screenshots/matrix_recipe.png" />
+                                </section>
+
+                                <section data-background="white">
+                                  <h4>Itération 4 : features customs</h4>
+                                  <ul>
+                                     <li>Ajout d'une colonne "exclamation"</li>
+                                     <li>Ajout d'une colonne "interrogation"</li>
+                                     <li>Ajout d'une colonne "ellipsis"</li>
+                                     <li>Ajout d'une colonne "length"</li>
+                                     <li>Ajout d'une colonne "emojis"</li>
+                                     <li>Ajout d'une colonne "urls"</li>
+                                  </ul>
+                                </section>
+
+                                <section data-background="white">
+                                  <h4>Nouveau schéma</h4>
+                                  <pre><code data-trim data-noescape>cat aws/extended/airlines_model.json
+{ "attributeName": "text_clean", "attributeType": "TEXT" },
+{ "attributeName": "exclamation", "attributeType": "BINARY" },
+{ "attributeName": "interrogation", "attributeType": "BINARY" },
+{ "attributeName": "ellipsis", "attributeType": "BINARY" },
+{ "attributeName": "length", "attributeType": "NUMERIC" },
+{ "attributeName": "links", "attributeType": "BINARY" },
+{ "attributeName": "emojis", "attributeType": "BINARY" },
+{ "attributeName": "airline_sentiment", "attributeType": "CATEGORICAL" }</code></pre>
+                                </section>
+
+                                <section data-background="white">
+                                  <h4>Détails des champs BINARY</h4>
+                                  <img src="screenshots/datasource_extended.png" />
+                                </section>
+
+                                <section data-background="white">
+                                  <h4>Résultats</h4>
+                                </section>
+
+                                <section data-background="white">
+                                  <h2>Prédictions</h2>
+                                </section>
+
+                                <section data-background="white">
+                                  <h4>Dans la console</h4>
+
+                                </section>
+
+                                <section data-background="white">
+                                  <h4>Prédictions par lot</h4>
+                                  <pre><code data-trim data-noescape>aws machinelearning create-batch-prediction \
+--batch-prediction-id airlines_model_simple_b1 \
+--ml-model-id airlines_simple \
+--batch-prediction-data-source-id airlines_simple_eval \
+--output-uri s3://bucket-ekino-aws-ml/preds/
+                                   </code></pre>
+                                </section>
+
+                                <section data-background="white">
+                                    <h4>Résultats</h4>
+                                    <pre><code data-trim data-noescape>aws s3api get-object --bucket bucket-ekino-aws-ml \
+--key results/batch-prediction/result/bp-iRIkAg7sRqy-tweets_airlines_clean.csv.gz predz.csv.gz
+
+zcat predz.csv.gz | head -n 4
+trueLabel,neutral,positive,negative
+negative,1.541554E-4,5.530051E-6,9.998403E-1
+positive,4.822463E-1,4.918533E-1,2.590039E-2
+positive,2.240345E-1,3.843759E-2,7.375279E-1
+                                     </code></pre>
+                                </section>
+
+                                <section data-background="white">
+                                  <h4>Prédictions en temps réel</h4>
+                                  <pre><code data-trim data-noescape>aws machinelearning create-realtime-endpoint \
+--ml-model-id airlines_simple
+{
+"MLModelId": "airlines_simple",
+"RealtimeEndpointInfo": {
+    "EndpointStatus": "UPDATING",
+    "PeakRequestsPerSecond": 0,
+    "CreatedAt": 1493905982.241,
+    "EndpointUrl": "https://realtime.machinelearning.eu-west-1.amazonaws.com"
+}
+}
+                                  </code></pre>
+                                </section>
+
+                                <section data-background="white">
+                                  <h4>Appel à l'endpoint</h4>
+                                  <pre><code data-trim data-noescape>aws machinelearning predict --ml-model-id airlines_simple \
+--record "{\"text_clean\" : \"we're late again and the food was terrible\"}" \
+--predict-endpoint https://realtime.machinelearning.eu-west-1.amazonaws.com
+{
+    "Prediction": {
+        "predictedLabel": "negative",
+        "predictedScores": {
+            "positive": 0.0003130021505057812,
+            "neutral": 9.809784387471154e-05,
+            "negative": 0.9995889067649841
+        },
+        "details": {
+            "PredictiveModelType": "MULTICLASS",
+            "Algorithm": "SGD"
+        }
+    }
+}                               </code></pre>
+                                </section>
+
+                                <section data-background="white">
+                                  <h2>Verdict</h2>
+                                </section>
+
+                                <section data-background="white">
+                                  <h4>A retenir</h4>
+                                  <ul>
+                                    <li>+ Pratique et bien intégré à AWS</li>
+                                    <li>+ Algorithme qui semble performant</li>
+                                    <li>- Manque de visualisation sur l'apprentissage</li>
+                                    <li>- Pas d'hyperparameter search built-in</li>
+                                    <li>- Manque d'algorithmes (RandomForest, XGBoost)</li>
+                                  </ul>
+                                </section>
+
+                                <section data-background="white"v>
+                                  <h4>Tarification</h4>
+                                  <ul>
+                                    <li>Analyse des données et frais de conception du modèle : 0,42 USD de l'heure</li>
+                                    <li>Prédictions par lots : 0,10 USD pour 1 000 prédictions</li>
+                                    <li>Prédictions en temps réel : 0,0001 USD par prédiction</li>
+                                  </ul>
+                                </section>
+
+                                <section data-background="white"v>
+                                  <h4>Le faire soi-même</h4>
+                                  <ul>
+                                    <li>Jupyter / NLTK / scikit-learn</li>
+                                    <li>Sauvegarde du modèle sur S3</li>
+                                    <li>API Gateway / Lambda pour les prédictions</li>
+                                  </ul>
+                                </section>
+
+                                <section data-background="white"v>
+                                  <h4>Le faire autrement</h4>
+                                  <ul>
+                                    <li>Réseaux de neurones</li>
+                                    <li>Word embeddings</li>
+                                  </ul>
+                                </section>
+
+                                <section data-background="white"v>
+                                  <h2>Questions ?</h2>
+                                </section>
+
+                                <section data-background="white">
+                                  <h2>Merci</h2>
+                                </section>
+			</div>
+		</div>
+
+		<script src="lib/js/head.min.js"></script>
+		<script src="js/reveal.js"></script>
+
+		<script>
+			// More info about config & dependencies:
+			// - https://github.com/hakimel/reveal.js#configuration
+			// - https://github.com/hakimel/reveal.js#dependencies
+			Reveal.initialize({
+                history: true,
+                center: true,
+                width: 1200,
+	            height: 1000,
+                // Factor of the display size that should remain empty around the content
+	            margin: 0.1,
+                // Bounds for smallest/largest possible scale to apply to content
+	            minScale: 0.2,
+	            maxScale: 1.5,
+                transition: 'none',
+
+                math: {
+					// mathjax: 'https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js',
+					config: 'TeX-AMS_HTML-full'
+				},
+				dependencies: [
+					{ src: 'plugin/markdown/marked.js' },
+					{ src: 'plugin/markdown/markdown.js' },
+					{ src: 'plugin/notes/notes.js', async: true },
+					{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } }
+				],
+                dependencies: [
+					//{ src: '../../lib/js/classList.js' },
+					{ src: 'plugin/math/math.js', async: true }
+				]
+			});
+		</script>
+	</body>
+</html>

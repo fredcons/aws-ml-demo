@@ -1,0 +1,28 @@
+{  
+   "Version":"2008-10-17",
+   "Statement":[  
+      {  
+         "Effect":"Allow",
+         "Principal":{  
+            "Service":"machinelearning.amazonaws.com"
+         },
+         "Action":"s3:GetObject",
+         "Resource":"arn:aws:s3:::bucket-ekino-aws-ml/*"
+      },
+      {  
+         "Effect":"Allow",
+         "Principal":{  
+            "Service":"machinelearning.amazonaws.com"
+         },
+         "Action":"s3:ListBucket",
+         "Resource":"arn:aws:s3:::bucket-ekino-aws-ml",
+         "Condition":{  
+            "StringLike":{  
+               "s3:prefix":"*"
+            }
+         }
+      }
+   ]
+}
+
+

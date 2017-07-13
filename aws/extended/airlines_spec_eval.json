@@ -1,0 +1,5 @@
+{
+  "DataLocationS3": "s3://bucket-ekino-aws-ml/airlines/extended/tweets_airlines_clean_extended.csv",
+  "DataSchemaLocationS3": "s3://bucket-ekino-aws-ml/airlines/extended/airlines_model.json",
+  "DataRearrangement" : "{\"splitting\":{\"percentBegin\":70, \"percentEnd\":100, \"strategy\":\"random\", \"strategyParams\": {\"randomSeed\":\"foobar\"}}}"
+}

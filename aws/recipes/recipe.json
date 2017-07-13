@@ -1,0 +1,9 @@
+{
+  "outputs": [
+    "ALL_BINARY",
+    "ALL_NUMERIC",
+    "ALL_CATEGORICAL",
+    "ALL_TEXT",
+    "ngram(lowercase(no_punct(text_clean)),2)"
+  ]
+}
